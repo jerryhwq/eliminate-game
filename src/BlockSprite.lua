@@ -6,9 +6,9 @@ local BlockSprite = class('BlockSprite', function(type, state)
     return cc.Sprite:createWithSpriteFrameName(string.format('%s_%s_%04d', type, state, 0))
 end)
 
-function BlockSprite:ctor()
-    self.x = 0
-    self.y = 0
+function BlockSprite:ctor(type, state)
+    self.type = type
+    self.state = state
 end
 
 function BlockSprite:select()
@@ -33,18 +33,11 @@ end
 function BlockSprite.create(type, state)
     local sprite = BlockSprite.new(BLOCKS[type], state)
     sprite:setAnchorPoint(0, 0)
-    sprite.type = BLOCKS[type]
-    sprite.state = state
     return sprite
 end
 
 function BlockSprite.createRandomBlock()
     return BlockSprite.create(math.random(1, #BLOCKS), 'selected')
-end
-
-function BlockSprite:setLocation(x, y)
-    self.x = x
-    self.y = y
 end
 
 return BlockSprite

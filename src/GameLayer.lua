@@ -131,19 +131,68 @@ function GameLayer:initEvent()
 end
 
 function GameLayer:trySwap(p1, p2)
+    -- 禁用触摸事件，交换成功/失败后需要还原
     self:getEventDispatcher():removeEventListener(self.eventListener)
+    local function callback()
+        -- 假设为交换成功后坐标与方块的对应
+        local block2 = self.blocks[p1.x][p1.y]
+        local block1 = self.blocks[p2.x][p2.y]
+        if block1.type == block2.type then
+            -- 类型相同，交换失败，还原
+            self:swap(p1, p2, function()
+                self:initEvent()
+            end)
+            return
+        end
+        -- 计算交换后是否可消除
+        local r1 = self:tryClearBlock(p1)
+        local r2 = self:tryClearBlock(p2)
+        -- 均不可交换，换回
+        if not (r1 and r2) then
+            self:swap(p1, p2, function()
+                self:initEvent()
+            end)
+            return
+        end
+        -- 清除block1相关的方块
+        if r1 then
+            for i, v in pairs(r1) do
+                local sprite = self.blocks[v[1]][v[2]]
+                --sprite:removeSelf()
+            end
+        end
+        -- 清除block2相关的方块
+        if r2 then
+            for i, v in pairs(r2) do
+                local sprite = self.blocks[v[1]][v[2]]
+                --sprite:removeSelf()
+            end
+        end
+        self:fall()
+    end
+    self:swap(p1, p2, callback)
+end
+
+-- 落下并添加新方块
+function GameLayer:fall()
+end
+
+-- 检测
+function GameLayer:tryClearBlock(p)
+    return nil
+end
+
+function GameLayer:swap(p1, p2, callback)
     local block1 = self.blocks[p1.x][p1.y]
     local block2 = self.blocks[p2.x][p2.y]
     self.blocks[p1.x][p1.y] = block2
     self.blocks[p2.x][p2.y] = block1
-    local move = cc.MoveTo:create(0.5, self:getAbsoluteLocation(p1))
-    local function callback()
-        self:initEvent()
+    callback = callback or function()
     end
+    local move = cc.MoveTo:create(0.5, self:getAbsoluteLocation(p1))
     local seq = cc.Sequence:create(move, cc.CallFunc:create(callback))
     block1:runAction(cc.MoveTo:create(0.5, self:getAbsoluteLocation(p2)))
     block2:runAction(seq)
-    cclog('try to swap (%d, %d) and (%d, %d)', p1.x, p1.y, p2.x, p2.y)
 end
 
 function GameLayer:isNeighborBlock(p1, p2)

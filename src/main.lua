@@ -1,11 +1,9 @@
 cc.FileUtils:getInstance():setPopupNotify(false)
 
-winSize = cc.Director:getInstance():getWinSize()
-targetPlatform = cc.Application:getInstance():getTargetPlatform()
-
+require 'config'
 require 'cocos.init'
 
-cclog = function(...)
+cc.exports.cclog = function(...)
     print(string.format(...))
 end
 
@@ -14,7 +12,7 @@ local function main()
     local director = cc.Director:getInstance()
     director:setDisplayStats(true)
     director:setAnimationInterval(1.0 / 60)
-    local MenuScene = require('menu_scene')
+    local MenuScene = require('MenuScene')
     local menuScene = MenuScene.create()
     if director:getRunningScene() then
         director:replaceScene(menuScene)

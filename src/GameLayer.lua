@@ -70,8 +70,6 @@ function GameLayer:initLayer()
     for i = 1, 8 do
         for j = 1, 8 do
             self:createNewBlock(i, j)
-            local sprite = self.blocks[i][j]
-            sprite:select()
         end
     end
 end
@@ -89,26 +87,68 @@ end
 
 function GameLayer:initEvent()
     local listener = cc.EventListenerTouchOneByOne:create()
+    local tempLoc
     local function onTouchBegan(touch, event)
-        local loc = self.backgroundNode:convertToNodeSpaceAR(touch:getLocation())
-        local x = math.ceil(loc.x / BLOCK_WIDTH)
-        local y = math.ceil(loc.y / BLOCK_HEIGHT)
-        local sprite = self.blocks[x][y]
-        if sprite then
-            sprite:deselect()
-        end
+        tempLoc = self:getRelativeLocation(touch:getLocation())
         return true
     end
     local function onTouchEnded(touch, event)
-        local loc = self.backgroundNode:convertToNodeSpaceAR(touch:getLocation())
-        local x = math.ceil(loc.x / BLOCK_WIDTH)
-        local y = math.ceil(loc.y / BLOCK_HEIGHT)
-        cclog('(%d, %d)', x, y)
+        local loc = self:getRelativeLocation(touch:getLocation())
+        local sprite = self.blocks[tempLoc.x][tempLoc.y]
+        if not sprite then
+            return
+        end
+        if self:isSameBlock(loc, tempLoc) then
+            if not self.selected then
+                self.selected = tempLoc
+                sprite:select()
+            elseif self:isSameBlock(loc, self.selected) then
+                self.selected = nil
+                sprite:deselect()
+            elseif self:isNeighborBlock(loc, self.selected) then
+                self:trySwap(loc, self.selected)
+            else
+                local block = self.blocks[self.selected.x][self.selected.y]
+                block:deselect()
+                self.selected = loc
+                block = self.blocks[tempLoc.x][tempLoc.y]
+                block:select()
+            end
+        elseif self:isNeighborBlock(loc, tempLoc) then
+            if not self.selected then
+                self:trySwap(loc, tempLoc)
+            end
+        end
     end
     listener:registerScriptHandler(onTouchBegan, cc.Handler.EVENT_TOUCH_BEGAN)
     listener:registerScriptHandler(onTouchEnded, cc.Handler.EVENT_TOUCH_ENDED)
     local eventDispatcher = cc.Director:getInstance():getEventDispatcher()
     eventDispatcher:addEventListenerWithSceneGraphPriority(listener, self)
+end
+
+function GameLayer:trySwap(p1, p2)
+    cclog('try to swap (%d, %d) and (%d, %d)', p1.x, p1.y, p2.x, p2.y)
+end
+
+function GameLayer:isNeighborBlock(p1, p2)
+    if p1.x == p2.x then
+        return p1.y == p2.y - 1 or p1.y == p2.y + 1
+    elseif p1.y == p2.y then
+        return p1.x == p2.x - 1 or p1.x == p2.x + 1
+    else
+        return false
+    end
+end
+
+function GameLayer:isSameBlock(p1, p2)
+    return p1.x == p2.x and p1.y == p2.y
+end
+
+function GameLayer:getRelativeLocation(location)
+    local loc = self.backgroundNode:convertToNodeSpaceAR(location)
+    local x = math.ceil(loc.x / BLOCK_WIDTH)
+    local y = math.ceil(loc.y / BLOCK_HEIGHT)
+    return cc.p(x, y)
 end
 
 function GameLayer:onExit()

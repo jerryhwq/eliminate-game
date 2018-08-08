@@ -3,6 +3,8 @@ local BlockSprite = require('BlockSprite')
 
 local WIN_WIDTH = cc.Director:getInstance():getWinSize().width
 local WIN_HEIGHT = cc.Director:getInstance():getWinSize().height
+local BLOCK_WIDTH = 64
+local BLOCK_HEIGHT = 68
 
 local GameLayer = class('GameLayer', function()
     return cc.Layer:create()
@@ -11,9 +13,9 @@ end)
 function GameLayer:ctor()
 
     self.selected = nil
-    self.data = {}
+    self.blocks = {}
     for i = 1, 8 do
-        self.data[i] = {}
+        self.blocks[i] = {}
     end
 
     self:registerScriptHandler(function(event)
@@ -28,9 +30,9 @@ end
 
 function GameLayer:createNewBlock(x, y)
     local sprite = BlockSprite.createRandomBlock()
-    sprite:setPosition(self.backgroundNode:convertToWorldSpace(cc.p((x - 1) * 64, (y - 1) * 68)))
+    sprite:setPosition(self.backgroundNode:convertToWorldSpace(cc.p((x - 1) * BLOCK_WIDTH, (y - 1) * BLOCK_HEIGHT)))
     self:addChild(sprite)
-    self.data[x][y] = sprite
+    self.blocks[x][y] = sprite
 end
 
 function GameLayer:initLayer()
@@ -59,15 +61,17 @@ function GameLayer:initLayer()
 
     -- 创建背景
     self.backgroundNode = cc.DrawNode:create()
-    self.backgroundNode:drawSolidRect(cc.p(0, 0), cc.p(64 * 8, 68 * 8), cc.c4b(0, 0, 0, 0.5))
+    self.backgroundNode:drawSolidRect(cc.p(0, 0), cc.p(BLOCK_WIDTH * 8, BLOCK_HEIGHT * 8), cc.c4b(0, 0, 0, 0.5))
     self.backgroundNode:setAnchorPoint(0, 0)
-    self.backgroundNode:setPosition(cc.p(WIN_WIDTH / 2 - 64 * 4, WIN_HEIGHT / 2 - 68 * 4))
+    self.backgroundNode:setPosition(cc.p(WIN_WIDTH / 2 - BLOCK_WIDTH * 4, WIN_HEIGHT / 2 - BLOCK_HEIGHT * 4))
     self:addChild(self.backgroundNode)
 
     --初始化方块
     for i = 1, 8 do
         for j = 1, 8 do
             self:createNewBlock(i, j)
+            local sprite = self.blocks[i][j]
+            sprite:select()
         end
     end
 end
@@ -80,6 +84,31 @@ function GameLayer:onEnter()
     display.loadSpriteFrames('horse.plist', 'horse.png')
     display.loadSpriteFrames('fox.plist', 'fox.png')
     self:initLayer()
+    self:initEvent()
+end
+
+function GameLayer:initEvent()
+    local listener = cc.EventListenerTouchOneByOne:create()
+    local function onTouchBegan(touch, event)
+        local loc = self.backgroundNode:convertToNodeSpaceAR(touch:getLocation())
+        local x = math.ceil(loc.x / BLOCK_WIDTH)
+        local y = math.ceil(loc.y / BLOCK_HEIGHT)
+        local sprite = self.blocks[x][y]
+        if sprite then
+            sprite:deselect()
+        end
+        return true
+    end
+    local function onTouchEnded(touch, event)
+        local loc = self.backgroundNode:convertToNodeSpaceAR(touch:getLocation())
+        local x = math.ceil(loc.x / BLOCK_WIDTH)
+        local y = math.ceil(loc.y / BLOCK_HEIGHT)
+        cclog('(%d, %d)', x, y)
+    end
+    listener:registerScriptHandler(onTouchBegan, cc.Handler.EVENT_TOUCH_BEGAN)
+    listener:registerScriptHandler(onTouchEnded, cc.Handler.EVENT_TOUCH_ENDED)
+    local eventDispatcher = cc.Director:getInstance():getEventDispatcher()
+    eventDispatcher:addEventListenerWithSceneGraphPriority(listener, self)
 end
 
 function GameLayer:onExit()

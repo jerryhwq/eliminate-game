@@ -30,7 +30,7 @@ end
 
 function GameLayer:createNewBlock(x, y)
     local sprite = BlockSprite.createRandomBlock()
-    sprite:setPosition(self.backgroundNode:convertToWorldSpace(cc.p((x - 1) * BLOCK_WIDTH, (y - 1) * BLOCK_HEIGHT)))
+    sprite:setPosition(self:getAbsoluteLocation(cc.p(x, y)))
     self:addChild(sprite)
     self.blocks[x][y] = sprite
 end
@@ -86,13 +86,13 @@ function GameLayer:onEnter()
 end
 
 function GameLayer:initEvent()
-    local listener = cc.EventListenerTouchOneByOne:create()
+    self.eventListener = cc.EventListenerTouchOneByOne:create()
     local tempLoc
-    local function onTouchBegan(touch, event)
+    local function onTouchBegan(touch)
         tempLoc = self:getRelativeLocation(touch:getLocation())
         return true
     end
-    local function onTouchEnded(touch, event)
+    local function onTouchEnded(touch)
         local loc = self:getRelativeLocation(touch:getLocation())
         local sprite = self.blocks[tempLoc.x][tempLoc.y]
         if not sprite then
@@ -106,7 +106,11 @@ function GameLayer:initEvent()
                 self.selected = nil
                 sprite:deselect()
             elseif self:isNeighborBlock(loc, self.selected) then
-                self:trySwap(loc, self.selected)
+                local block = self.blocks[self.selected.x][self.selected.y]
+                block:deselect()
+                local tempSelect = self.selected
+                self.selected = nil
+                self:trySwap(loc, tempSelect)
             else
                 local block = self.blocks[self.selected.x][self.selected.y]
                 block:deselect()
@@ -120,13 +124,25 @@ function GameLayer:initEvent()
             end
         end
     end
-    listener:registerScriptHandler(onTouchBegan, cc.Handler.EVENT_TOUCH_BEGAN)
-    listener:registerScriptHandler(onTouchEnded, cc.Handler.EVENT_TOUCH_ENDED)
+    self.eventListener:registerScriptHandler(onTouchBegan, cc.Handler.EVENT_TOUCH_BEGAN)
+    self.eventListener:registerScriptHandler(onTouchEnded, cc.Handler.EVENT_TOUCH_ENDED)
     local eventDispatcher = cc.Director:getInstance():getEventDispatcher()
-    eventDispatcher:addEventListenerWithSceneGraphPriority(listener, self)
+    eventDispatcher:addEventListenerWithSceneGraphPriority(self.eventListener, self)
 end
 
 function GameLayer:trySwap(p1, p2)
+    self:getEventDispatcher():removeEventListener(self.eventListener)
+    local block1 = self.blocks[p1.x][p1.y]
+    local block2 = self.blocks[p2.x][p2.y]
+    self.blocks[p1.x][p1.y] = block2
+    self.blocks[p2.x][p2.y] = block1
+    local move = cc.MoveTo:create(0.5, self:getAbsoluteLocation(p1))
+    local function callback()
+        self:initEvent()
+    end
+    local seq = cc.Sequence:create(move, cc.CallFunc:create(callback))
+    block1:runAction(cc.MoveTo:create(0.5, self:getAbsoluteLocation(p2)))
+    block2:runAction(seq)
     cclog('try to swap (%d, %d) and (%d, %d)', p1.x, p1.y, p2.x, p2.y)
 end
 
@@ -149,6 +165,10 @@ function GameLayer:getRelativeLocation(location)
     local x = math.ceil(loc.x / BLOCK_WIDTH)
     local y = math.ceil(loc.y / BLOCK_HEIGHT)
     return cc.p(x, y)
+end
+
+function GameLayer:getAbsoluteLocation(p)
+    return self.backgroundNode:convertToWorldSpaceAR(cc.p((p.x - 1) * BLOCK_WIDTH, (p.y - 1) * BLOCK_HEIGHT))
 end
 
 function GameLayer:onExit()

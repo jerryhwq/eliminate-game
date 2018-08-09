@@ -30,10 +30,6 @@ function BlockSprite:onEnter()
 end
 
 function BlockSprite:select()
-    local animFrames = {}
-    for i = 1, 34, 1 do
-        animFrames[i] = display.newSpriteFrame(generateFrameName(self.type, self.state, i - 1))
-    end
     local animation = display.newAnimation(self.animFrames, 0.055)
     animation:setRestoreOriginalFrame(true)
     self.animation = self:runAction(cc.RepeatForever:create(cc.Animate:create(animation)))
@@ -62,6 +58,10 @@ end
 
 function BlockSprite.createRandomBlock()
     return BlockSprite:create(BLOCKS[math.random(1, #BLOCKS)], 'selected')
+end
+
+function BlockSprite:hasSameType(sprite)
+    return sprite and sprite.type == self.type
 end
 
 return BlockSprite

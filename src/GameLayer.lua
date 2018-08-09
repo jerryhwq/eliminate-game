@@ -17,6 +17,7 @@ function GameLayer:ctor()
     for i = 1, 8 do
         self.blocks[i] = {}
     end
+    self.canPlay = false
 
     self:registerScriptHandler(function(event)
         if event == 'enter' then
@@ -27,10 +28,9 @@ function GameLayer:ctor()
 end
 
 function GameLayer:createNewBlock(x, y)
-    local sprite = BlockSprite.createRandomBlock()
-    sprite:setPosition(self:getAbsoluteLocation(cc.p(x, y)))
-    self.clippingNode:addChild(sprite)
-    self.blocks[x][y] = sprite
+    local block = BlockSprite.createRandomBlock()
+    block:setPosition(self:getAbsoluteLocation(cc.p(x, y)))
+    return block
 end
 
 function GameLayer:initLayer()
@@ -58,9 +58,38 @@ function GameLayer:initLayer()
     backMenu:setAnchorPoint(cc.p(0, 1))
     backMenu:addChild(backMenuItem)
     self:addChild(backMenu)
+    self:initBlocks()
 
-    self:fallAllColumns()
+end
 
+function GameLayer:initBlocks()
+    for i = 1, 8, 1 do
+        for j = 1, 8, 1 do
+            while true do
+                local block = self:createNewBlock(i, j)
+                self.blocks[i][j] = block
+                local isOk = true
+                if i >= 3 then
+                    local tempBlock1 = self.blocks[i - 1][j]
+                    local tempBlock2 = self.blocks[i - 2][j]
+                    if block:hasSameType(tempBlock1) and block:hasSameType(tempBlock2) then
+                        isOk = false
+                    end
+                end
+                if j >= 3 then
+                    local tempBlock1 = self.blocks[i][j - 1]
+                    local tempBlock2 = self.blocks[i][j - 2]
+                    if block:hasSameType(tempBlock1) and block:hasSameType(tempBlock2) then
+                        isOk = false
+                    end
+                end
+                if isOk then
+                    self.clippingNode:addChild(block)
+                    break
+                end
+            end
+        end
+    end
 end
 
 -- 遮住游戏在游戏区域外的方块
@@ -87,6 +116,7 @@ end
 function GameLayer:onEnter()
     self:initLayer()
     self:initEvent()
+    self.canPlay = true
 end
 
 function GameLayer:initEvent()
@@ -97,6 +127,9 @@ function GameLayer:initEvent()
         return true
     end
     local function onTouchEnded(touch)
+        if not self.canPlay then
+            return
+        end
         local loc = self:getRelativeLocation(touch:getLocation())
         -- 在区域外
         if not (self:hasBlock(tempLoc) and self:hasBlock(loc)) then
@@ -144,7 +177,7 @@ end
 
 function GameLayer:trySwap(p1, p2)
     -- 禁用触摸事件，交换成功/失败后需要还原
-    self:getEventDispatcher():removeEventListener(self.eventListener)
+    self.canPlay = false
     local function callback()
         -- 假设为交换成功后坐标与方块的对应
         local block2 = self.blocks[p1.x][p1.y]
@@ -152,7 +185,7 @@ function GameLayer:trySwap(p1, p2)
         if block1.type == block2.type then
             -- 类型相同，交换失败，还原
             self:swap(p1, p2, function()
-                self:initEvent()
+                self.canPlay = true
             end)
             return
         end
@@ -160,36 +193,39 @@ function GameLayer:trySwap(p1, p2)
         local r1 = self:tryClearBlock(p1)
         local r2 = self:tryClearBlock(p2)
         -- 均不可交换，换回
-        if not (r1 and r2) then
+        if not (r1 or r2) then
             self:swap(p1, p2, function()
-                self:initEvent()
+                self.canPlay = true
             end)
             return
-        end
-        -- 清除block1相关的方块
-        if r1 then
-            for i, v in pairs(r1) do
-                local sprite = self.blocks[v[1]][v[2]]
-                --sprite:removeSelf()
-            end
-        end
-        -- 清除block2相关的方块
-        if r2 then
-            for i, v in pairs(r2) do
-                local sprite = self.blocks[v[1]][v[2]]
-                --sprite:removeSelf()
-            end
         end
         self:fallAllColumns()
     end
     self:swap(p1, p2, callback)
 end
 
--- 落下并添加新方块
+-- 落下并添加新方块，同时负责清除
 function GameLayer:fallAllColumns()
     for i = 1, 8, 1 do
         self:fallOneColumn(i)
     end
+    local canContinue = true
+    local function clear()
+        for i = 1, 8 do
+            for j = 1, 8 do
+                local r = self:tryClearBlock(cc.p(i, j))
+                if r then
+                    canContinue = false
+                end
+            end
+            if canContinue then
+                self.canPlay = true
+            else
+                self:fallAllColumns()
+            end
+        end
+    end
+    performWithDelay(self, clear, 0.8)
 end
 
 function GameLayer:fallOneColumn(i)
@@ -197,9 +233,9 @@ function GameLayer:fallOneColumn(i)
     -- 遍历一列
     for j = 1, 8, 1 do
         local sprite = self.blocks[i][j]
-        local time
         -- 如果不存在就从上方下落
         if not sprite then
+            local time
             local k = j + 1
             while k <= 8 do
                 sprite = self.blocks[i][k]
@@ -207,6 +243,7 @@ function GameLayer:fallOneColumn(i)
                 if sprite then
                     time = k - j
                     self.blocks[i][k] = nil
+                    break
                 end
                 k = k + 1
             end
@@ -218,16 +255,77 @@ function GameLayer:fallOneColumn(i)
                 time = newSpriteNum + 8 - j
                 self.clippingNode:addChild(sprite)
             end
+            self.blocks[i][j] = sprite
+            local move = cc.MoveTo:create(0.1 * time, self:getAbsoluteLocation(cc.p(i, j)))
+            sprite:runAction(move)
         end
-        self.blocks[i][j] = sprite
-        local move = cc.MoveTo:create(0.3 * time, self:getAbsoluteLocation(cc.p(i, j)))
-        sprite:runAction(move)
     end
 end
 
 -- 检测
 function GameLayer:tryClearBlock(p)
-    return nil
+    local sprite = self.blocks[p.x][p.y]
+    if not sprite then
+        return false
+    end
+    local result = false
+    local sameTypeUpBlock = p.y
+    local sameTypeDownBlock = p.y
+    -- 上下、左右
+    for i = p.y + 1, 8, 1 do
+        local tempSprite = self.blocks[p.x][i]
+        if sprite:hasSameType(tempSprite) then
+            sameTypeUpBlock = i
+        else
+            break
+        end
+    end
+    for i = p.y - 1, 1, -1 do
+        local tempSprite = self.blocks[p.x][i]
+        if sprite:hasSameType(tempSprite) then
+            sameTypeDownBlock = i
+        else
+            break
+        end
+    end
+    if sameTypeUpBlock - sameTypeDownBlock >= 2 then
+        for i = sameTypeDownBlock, sameTypeUpBlock, 1 do
+            local tempSprite = self.blocks[p.x][i]
+            tempSprite:removeSelf()
+            self.blocks[p.x][i] = nil
+        end
+        result = true
+    end
+    if result then
+        return true
+    end
+    local sameTypeLeftBlock = p.x
+    local sameTypeRightBlock = p.x
+    for i = p.x - 1, 1, -1 do
+        local tempSprite = self.blocks[i][p.y]
+        if sprite:hasSameType(tempSprite) then
+            sameTypeLeftBlock = i
+        else
+            break
+        end
+    end
+    for i = p.x + 1, 8, 1 do
+        local tempSprite = self.blocks[i][p.y]
+        if sprite:hasSameType(tempSprite) then
+            sameTypeRightBlock = i
+        else
+            break
+        end
+    end
+    if sameTypeRightBlock - sameTypeLeftBlock >= 2 then
+        for i = sameTypeLeftBlock, sameTypeRightBlock, 1 do
+            local tempSprite = self.blocks[i][p.y]
+            tempSprite:removeSelf()
+            self.blocks[i][p.y] = nil
+        end
+        result = true
+    end
+    return result
 end
 
 -- 交换两个方块
@@ -259,7 +357,6 @@ end
 function GameLayer:isSameBlock(p1, p2)
     return p1.x == p2.x and p1.y == p2.y
 end
-
 
 -- 绝对坐标转相对坐标
 function GameLayer:getRelativeLocation(location)

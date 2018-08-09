@@ -3,12 +3,13 @@ cc.FileUtils:getInstance():setPopupNotify(false)
 require 'config'
 require 'cocos.init'
 
+math.randomseed(os.time())
+
 cc.exports.cclog = function(...)
     print(string.format(...))
 end
 
 local function main()
-    math.randomseed(os.time())
     local director = cc.Director:getInstance()
     director:setDisplayStats(true)
     director:setAnimationInterval(1.0 / 60)

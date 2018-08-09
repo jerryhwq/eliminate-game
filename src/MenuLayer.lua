@@ -24,7 +24,7 @@ function MenuLayer:initLayer()
     startMenuItem:setFontSizeObj(64)
     local function startMenuItemHandler(sender)
         local GameScene = require('GameScene')
-        local gameScene = GameScene.create()
+        local gameScene = GameScene:create()
         cc.Director:getInstance():replaceScene(gameScene)
     end
     startMenuItem:registerScriptTapHandler(startMenuItemHandler)

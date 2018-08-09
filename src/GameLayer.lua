@@ -21,8 +21,6 @@ function GameLayer:ctor()
     self:registerScriptHandler(function(event)
         if event == 'enter' then
             self:onEnter()
-        elseif event == 'exit' then
-            self:onExit()
         end
     end)
 
@@ -75,12 +73,6 @@ function GameLayer:initLayer()
 end
 
 function GameLayer:onEnter()
-    display.loadSpriteFrames('cat.plist', 'cat.png')
-    display.loadSpriteFrames('chicken.plist', 'chicken.png')
-    display.loadSpriteFrames('bear.plist', 'bear.png')
-    display.loadSpriteFrames('frog.plist', 'frog.png')
-    display.loadSpriteFrames('horse.plist', 'horse.png')
-    display.loadSpriteFrames('fox.plist', 'fox.png')
     self:initLayer()
     self:initEvent()
 end
@@ -187,12 +179,8 @@ function GameLayer:swap(p1, p2, callback)
     local block2 = self.blocks[p2.x][p2.y]
     self.blocks[p1.x][p1.y] = block2
     self.blocks[p2.x][p2.y] = block1
-    callback = callback or function()
-    end
-    local move = cc.MoveTo:create(0.5, self:getAbsoluteLocation(p1))
-    local seq = cc.Sequence:create(move, cc.CallFunc:create(callback))
-    block1:runAction(cc.MoveTo:create(0.5, self:getAbsoluteLocation(p2)))
-    block2:runAction(seq)
+    block1:moveTo(self:getAbsoluteLocation(p2))
+    block2:moveTo(self:getAbsoluteLocation(p1), callback)
 end
 
 function GameLayer:isNeighborBlock(p1, p2)
@@ -200,9 +188,8 @@ function GameLayer:isNeighborBlock(p1, p2)
         return p1.y == p2.y - 1 or p1.y == p2.y + 1
     elseif p1.y == p2.y then
         return p1.x == p2.x - 1 or p1.x == p2.x + 1
-    else
-        return false
     end
+    return false
 end
 
 function GameLayer:isSameBlock(p1, p2)
@@ -218,14 +205,6 @@ end
 
 function GameLayer:getAbsoluteLocation(p)
     return self.backgroundNode:convertToWorldSpaceAR(cc.p((p.x - 1) * BLOCK_WIDTH, (p.y - 1) * BLOCK_HEIGHT))
-end
-
-function GameLayer:onExit()
-    display.removeSpriteFrames('cat.plist')
-    display.removeSpriteFrames('chicken.plist')
-    display.removeSpriteFrames('bear.plist')
-    display.removeSpriteFrames('frog.plist')
-    display.removeSpriteFrames('horse.plist')
 end
 
 return GameLayer

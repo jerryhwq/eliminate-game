@@ -1,5 +1,5 @@
-local MenuScene = require('MenuScene')
 local BlockSprite = require('BlockSprite')
+local MenuScene = require('MenuScene')
 
 local WIN_WIDTH = cc.Director:getInstance():getWinSize().width
 local WIN_HEIGHT = cc.Director:getInstance():getWinSize().height
@@ -29,7 +29,7 @@ end
 function GameLayer:createNewBlock(x, y)
     local sprite = BlockSprite.createRandomBlock()
     sprite:setPosition(self:getAbsoluteLocation(cc.p(x, y)))
-    self:addChild(sprite)
+    self.clippingNode:addChild(sprite)
     self.blocks[x][y] = sprite
 end
 
@@ -39,6 +39,9 @@ function GameLayer:initLayer()
     background:setPosition(cc.p(WIN_WIDTH / 2, WIN_HEIGHT / 2))
     background:setContentSize(cc.size(WIN_WIDTH, WIN_HEIGHT))
     self:addChild(background)
+
+    self:initClippingNode()
+    self:initBackgroundNode()
 
     -- 添加返回按钮
     local backMenuItem = cc.MenuItemFont:create('返回')
@@ -54,22 +57,35 @@ function GameLayer:initLayer()
     backMenu:setPosition(cc.p(50, WIN_HEIGHT - 40))
     backMenu:setAnchorPoint(cc.p(0, 1))
     backMenu:addChild(backMenuItem)
-
     self:addChild(backMenu)
 
-    -- 创建背景
-    self.backgroundNode = cc.DrawNode:create()
-    self.backgroundNode:drawSolidRect(cc.p(0, 0), cc.p(BLOCK_WIDTH * 8, BLOCK_HEIGHT * 8), cc.c4b(0, 0, 0, 0.5))
-    self.backgroundNode:setAnchorPoint(0, 0)
-    self.backgroundNode:setPosition(cc.p(WIN_WIDTH / 2 - BLOCK_WIDTH * 4, WIN_HEIGHT / 2 - BLOCK_HEIGHT * 4))
-    self:addChild(self.backgroundNode)
-
-    --初始化方块
+    -- 初始化方块
     for i = 1, 8 do
         for j = 1, 8 do
             self:createNewBlock(i, j)
         end
     end
+end
+
+-- 遮住游戏在游戏区域外的方块
+function GameLayer:initClippingNode()
+    local clippingLayerNode = cc.Node:create()
+    local clippingLayer = cc.LayerColor:create(cc.c3b(0, 0, 0), BLOCK_WIDTH * 8, BLOCK_HEIGHT * 8)
+    clippingLayerNode:setAnchorPoint(0, 0)
+    clippingLayerNode:setPosition(cc.p(WIN_WIDTH / 2 - BLOCK_WIDTH * 4, WIN_HEIGHT / 2 - BLOCK_HEIGHT * 4))
+    clippingLayerNode:addChild(clippingLayer)
+
+    self.clippingNode = cc.ClippingNode:create(clippingLayerNode)
+    self:addChild(self.clippingNode)
+end
+
+-- 游戏区域背景
+function GameLayer:initBackgroundNode()
+    self.backgroundNode = cc.DrawNode:create()
+    self.backgroundNode:drawSolidRect(cc.p(0, 0), cc.p(BLOCK_WIDTH * 8, BLOCK_HEIGHT * 8), cc.c4b(0, 0, 0, 0.5))
+    self.backgroundNode:setAnchorPoint(0, 0)
+    self.backgroundNode:setPosition(cc.p(WIN_WIDTH / 2 - BLOCK_WIDTH * 4, WIN_HEIGHT / 2 - BLOCK_HEIGHT * 4))
+    self.clippingNode:addChild(self.backgroundNode)
 end
 
 function GameLayer:onEnter()
@@ -86,10 +102,11 @@ function GameLayer:initEvent()
     end
     local function onTouchEnded(touch)
         local loc = self:getRelativeLocation(touch:getLocation())
-        local sprite = self.blocks[tempLoc.x][tempLoc.y]
-        if not sprite then
+        -- 在区域外
+        if not (self:hasBlock(tempLoc) and self:hasBlock(loc)) then
             return
         end
+        local sprite = self.blocks[tempLoc.x][tempLoc.y]
         if self:isSameBlock(loc, tempLoc) then
             -- 起点和终点相同，认为是点击
             if not self.selected then
@@ -189,6 +206,11 @@ function GameLayer:swap(p1, p2, callback)
     self.blocks[p2.x][p2.y] = block1
     block1:moveTo(self:getAbsoluteLocation(p2))
     block2:moveTo(self:getAbsoluteLocation(p1), callback)
+end
+
+-- 判断对应位置是否有方块
+function GameLayer:hasBlock(p)
+    return self.blocks[p.x] and self.blocks[p.y]
 end
 
 -- 判断方块是否是相邻方块

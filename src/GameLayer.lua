@@ -91,19 +91,24 @@ function GameLayer:initEvent()
             return
         end
         if self:isSameBlock(loc, tempLoc) then
+            -- 起点和终点相同，认为是点击
             if not self.selected then
+                -- 当前没有选中，选中
                 self.selected = tempLoc
                 sprite:select()
             elseif self:isSameBlock(loc, self.selected) then
+                -- 和当前选中方块相同，取消选择
                 self.selected = nil
                 sprite:deselect()
             elseif self:isNeighborBlock(loc, self.selected) then
+                -- 和当前选中方块是相邻方块，交换
                 local block = self.blocks[self.selected.x][self.selected.y]
                 block:deselect()
                 local tempSelect = self.selected
                 self.selected = nil
                 self:trySwap(loc, tempSelect)
             else
+                -- 取消选择之前的方块，并把当前的选中
                 local block = self.blocks[self.selected.x][self.selected.y]
                 block:deselect()
                 self.selected = loc
@@ -111,7 +116,9 @@ function GameLayer:initEvent()
                 block:select()
             end
         elseif self:isNeighborBlock(loc, tempLoc) then
+            -- 起点和终点不同，且为相邻方块
             if not self.selected then
+                -- 如果当前没有选中，则交换，否则忽略
                 self:trySwap(loc, tempLoc)
             end
         end
@@ -174,6 +181,7 @@ function GameLayer:tryClearBlock(p)
     return nil
 end
 
+-- 交换两个方块
 function GameLayer:swap(p1, p2, callback)
     local block1 = self.blocks[p1.x][p1.y]
     local block2 = self.blocks[p2.x][p2.y]
@@ -183,6 +191,7 @@ function GameLayer:swap(p1, p2, callback)
     block2:moveTo(self:getAbsoluteLocation(p1), callback)
 end
 
+-- 判断方块是否是相邻方块
 function GameLayer:isNeighborBlock(p1, p2)
     if p1.x == p2.x then
         return p1.y == p2.y - 1 or p1.y == p2.y + 1
@@ -192,10 +201,13 @@ function GameLayer:isNeighborBlock(p1, p2)
     return false
 end
 
+-- 判断方块是否是同一方块
 function GameLayer:isSameBlock(p1, p2)
     return p1.x == p2.x and p1.y == p2.y
 end
 
+
+-- 绝对坐标转相对坐标
 function GameLayer:getRelativeLocation(location)
     local loc = self.backgroundNode:convertToNodeSpaceAR(location)
     local x = math.ceil(loc.x / BLOCK_WIDTH)
@@ -203,6 +215,7 @@ function GameLayer:getRelativeLocation(location)
     return cc.p(x, y)
 end
 
+-- 相对坐标转绝对坐标
 function GameLayer:getAbsoluteLocation(p)
     return self.backgroundNode:convertToWorldSpaceAR(cc.p((p.x - 1) * BLOCK_WIDTH, (p.y - 1) * BLOCK_HEIGHT))
 end

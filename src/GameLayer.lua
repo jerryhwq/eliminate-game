@@ -59,12 +59,8 @@ function GameLayer:initLayer()
     backMenu:addChild(backMenuItem)
     self:addChild(backMenu)
 
-    -- 初始化方块
-    for i = 1, 8 do
-        for j = 1, 8 do
-            self:createNewBlock(i, j)
-        end
-    end
+    self:fallAllColumns()
+
 end
 
 -- 遮住游戏在游戏区域外的方块
@@ -184,13 +180,49 @@ function GameLayer:trySwap(p1, p2)
                 --sprite:removeSelf()
             end
         end
-        self:fall()
+        self:fallAllColumns()
     end
     self:swap(p1, p2, callback)
 end
 
 -- 落下并添加新方块
-function GameLayer:fall()
+function GameLayer:fallAllColumns()
+    for i = 1, 8, 1 do
+        self:fallOneColumn(i)
+    end
+end
+
+function GameLayer:fallOneColumn(i)
+    local newSpriteNum = 0
+    -- 遍历一列
+    for j = 1, 8, 1 do
+        local sprite = self.blocks[i][j]
+        local time
+        -- 如果不存在就从上方下落
+        if not sprite then
+            local k = j + 1
+            while k <= 8 do
+                sprite = self.blocks[i][k]
+                -- 如果上方有可用方块，就从上方下落
+                if sprite then
+                    time = k - j
+                    self.blocks[i][k] = nil
+                end
+                k = k + 1
+            end
+            -- 如果上方没有可用方块，就加载新的
+            if k == 9 then
+                sprite = BlockSprite.createRandomBlock()
+                sprite:setPosition(self:getAbsoluteLocation(cc.p(i, newSpriteNum + 9)))
+                newSpriteNum = newSpriteNum + 1
+                time = newSpriteNum + 8 - j
+                self.clippingNode:addChild(sprite)
+            end
+        end
+        self.blocks[i][j] = sprite
+        local move = cc.MoveTo:create(0.3 * time, self:getAbsoluteLocation(cc.p(i, j)))
+        sprite:runAction(move)
+    end
 end
 
 -- 检测

@@ -199,6 +199,7 @@ function GameLayer:trySwap(p1, p2)
             end)
             return
         end
+        audio.playSound('clear.mp3')
         self:fallAllColumns()
     end
     self:swap(p1, p2, callback)
@@ -221,6 +222,7 @@ function GameLayer:fallAllColumns()
             if canContinue then
                 self.canPlay = true
             else
+                audio.playSound('clear.mp3')
                 self:fallAllColumns()
             end
         end
@@ -290,9 +292,7 @@ function GameLayer:tryClearBlock(p)
     end
     if sameTypeUpBlock - sameTypeDownBlock >= 2 then
         for i = sameTypeDownBlock, sameTypeUpBlock, 1 do
-            local tempSprite = self.blocks[p.x][i]
-            tempSprite:removeSelf()
-            self.blocks[p.x][i] = nil
+            self:removeOneBlock(cc.p(p.x, i))
         end
         result = true
     end
@@ -319,13 +319,17 @@ function GameLayer:tryClearBlock(p)
     end
     if sameTypeRightBlock - sameTypeLeftBlock >= 2 then
         for i = sameTypeLeftBlock, sameTypeRightBlock, 1 do
-            local tempSprite = self.blocks[i][p.y]
-            tempSprite:removeSelf()
-            self.blocks[i][p.y] = nil
+            self:removeOneBlock(cc.p(i, p.y))
         end
         result = true
     end
     return result
+end
+
+function GameLayer:removeOneBlock(p)
+    local tempSprite = self.blocks[p.x][p.y]
+    tempSprite:removeSelf()
+    self.blocks[p.x][p.y] = nil
 end
 
 -- 交换两个方块

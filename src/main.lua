@@ -3,18 +3,22 @@ cc.FileUtils:getInstance():setPopupNotify(false)
 require 'config'
 require 'cocos.init'
 
-math.randomseed(os.time())
-
 cc.exports.cclog = function(...)
     print(string.format(...))
 end
 
+local function initAudio()
+    audio.setMusicVolume(1)
+    audio.preloadMusic('backgroun.mp3')
+    audio.preloadSound('clear.mp3')
+end
+
 local function main()
+    math.randomseed(os.time())
+    initAudio()
     local director = cc.Director:getInstance()
-    director:setDisplayStats(true)
-    director:setAnimationInterval(1.0 / 60)
     local MenuScene = require('MenuScene')
-    local menuScene = MenuScene.create()
+    local menuScene = MenuScene:create()
     if director:getRunningScene() then
         director:replaceScene(menuScene)
     else

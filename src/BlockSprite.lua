@@ -24,7 +24,15 @@ function BlockSprite:ctor(type, state)
 end
 
 function BlockSprite:onEnter()
-    for i = 1, 34, 1 do
+    local frameNum
+    if self.state == 'selected' then
+        frameNum = 35
+    elseif self.state == 'column' then
+        frameNum = 23
+    elseif self.state == 'line' then
+        frameNum = 23
+    end
+    for i = 1, frameNum, 1 do
         self.animFrames[i] = display.newSpriteFrame(generateFrameName(self.type, self.state, i - 1))
     end
 end

@@ -36,7 +36,7 @@ end
 function GameLayer:initLayer()
     -- 添加背景
     local background = ccui.Scale9Sprite:create('background.png')
-    background:setPosition(cc.p(WIN_WIDTH / 2, WIN_HEIGHT / 2))
+    background:setPosition(WIN_WIDTH / 2, WIN_HEIGHT / 2)
     background:setContentSize(cc.size(WIN_WIDTH, WIN_HEIGHT))
     self:addChild(background)
 
@@ -53,7 +53,7 @@ function GameLayer:initLayer()
 
     -- 添加返回按钮菜单
     local backMenu = cc.Menu:create()
-    backMenu:setPosition(cc.p(50, WIN_HEIGHT - 40))
+    backMenu:setPosition(50, WIN_HEIGHT - 40)
     backMenu:setAnchorPoint(cc.p(0, 1))
     backMenu:addChild(backMenuItem)
     self:addChild(backMenu)
@@ -101,7 +101,7 @@ function GameLayer:initClippingNode()
     local clippingLayerNode = cc.Node:create()
     local clippingLayer = cc.LayerColor:create(cc.c3b(0, 0, 0), BLOCK_WIDTH * 8, BLOCK_HEIGHT * 8)
     clippingLayerNode:setAnchorPoint(0, 0)
-    clippingLayerNode:setPosition(cc.p(WIN_WIDTH / 2 - BLOCK_WIDTH * 4, WIN_HEIGHT / 2 - BLOCK_HEIGHT * 4))
+    clippingLayerNode:setPosition(WIN_WIDTH / 2 - BLOCK_WIDTH * 4, WIN_HEIGHT / 2 - BLOCK_HEIGHT * 4)
     clippingLayerNode:addChild(clippingLayer)
 
     self.clippingNode = cc.ClippingNode:create(clippingLayerNode)
@@ -113,7 +113,7 @@ function GameLayer:initBackgroundNode()
     self.backgroundNode = cc.DrawNode:create()
     self.backgroundNode:drawSolidRect(cc.p(0, 0), cc.p(BLOCK_WIDTH * 8, BLOCK_HEIGHT * 8), cc.c4b(0, 0, 0, 0.5))
     self.backgroundNode:setAnchorPoint(0, 0)
-    self.backgroundNode:setPosition(cc.p(WIN_WIDTH / 2 - BLOCK_WIDTH * 4, WIN_HEIGHT / 2 - BLOCK_HEIGHT * 4))
+    self.backgroundNode:setPosition(WIN_WIDTH / 2 - BLOCK_WIDTH * 4, WIN_HEIGHT / 2 - BLOCK_HEIGHT * 4)
     self.clippingNode:addChild(self.backgroundNode)
 end
 
@@ -307,9 +307,18 @@ function GameLayer:tryClearBlock(p)
             break
         end
     end
-    if sameTypeUpBlock - sameTypeDownBlock >= 2 then
-        for i = sameTypeDownBlock, sameTypeUpBlock, 1 do
+    local count = sameTypeUpBlock - sameTypeDownBlock
+    if count >= 2 then
+        for i = sameTypeDownBlock, p.y - 1 do
             self:removeOneBlock(cc.p(p.x, i))
+        end
+        for i = p.y + 1, sameTypeUpBlock, 1 do
+            self:removeOneBlock(cc.p(p.x, i))
+        end
+        if count >= 3 then
+            self:replaceSpecialBlock(p, 'line')
+        else
+            self:removeOneBlock(p)
         end
         result = true
     end
@@ -334,9 +343,18 @@ function GameLayer:tryClearBlock(p)
             break
         end
     end
-    if sameTypeRightBlock - sameTypeLeftBlock >= 2 then
-        for i = sameTypeLeftBlock, sameTypeRightBlock, 1 do
+    count = sameTypeRightBlock - sameTypeLeftBlock
+    if count >= 2 then
+        for i = sameTypeLeftBlock, p.x - 1, 1 do
             self:removeOneBlock(cc.p(i, p.y))
+        end
+        for i = p.x + 1, sameTypeRightBlock, 1 do
+            self:removeOneBlock(cc.p(i, p.y))
+        end
+        if count >= 3 then
+            self:replaceSpecialBlock(p, 'column')
+        else
+            self:removeOneBlock(p)
         end
         result = true
     end
@@ -347,6 +365,17 @@ function GameLayer:removeOneBlock(p)
     local tempSprite = self.blocks[p.x][p.y]
     tempSprite:removeSelf()
     self.blocks[p.x][p.y] = nil
+end
+
+function GameLayer:replaceSpecialBlock(p, state)
+    local sprite = self.blocks[p.x][p.y]
+    local spriteType = sprite.type
+    local x, y = sprite:getPosition()
+    self:removeOneBlock(p)
+    local newSprite = BlockSprite:create(spriteType, state)
+    newSprite:setPosition(x, y)
+    self.clippingNode:addChild(newSprite)
+    self.blocks[p.x][p.y] = newSprite
 end
 
 -- 交换两个方块

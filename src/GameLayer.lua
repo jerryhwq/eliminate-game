@@ -47,8 +47,7 @@ function GameLayer:initLayer()
     local backMenuItem = cc.MenuItemFont:create('返回')
     backMenuItem:setFontSizeObj(32)
     local function backMenuItemHandler(sender)
-        local menuScene = MenuScene:create()
-        cc.Director:getInstance():replaceScene(menuScene)
+        self:backToMenu()
     end
     backMenuItem:registerScriptTapHandler(backMenuItemHandler)
 
@@ -60,6 +59,11 @@ function GameLayer:initLayer()
     self:addChild(backMenu)
     self:initBlocks()
 
+end
+
+function GameLayer:backToMenu()
+    local menuScene = MenuScene:create()
+    cc.Director:getInstance():replaceScene(menuScene)
 end
 
 function GameLayer:initBlocks()
@@ -120,7 +124,7 @@ function GameLayer:onEnter()
 end
 
 function GameLayer:initEvent()
-    self.eventListener = cc.EventListenerTouchOneByOne:create()
+    local touchEventListener = cc.EventListenerTouchOneByOne:create()
     local tempLoc
     local function onTouchBegan(touch)
         tempLoc = self:getRelativeLocation(touch:getLocation())
@@ -169,10 +173,23 @@ function GameLayer:initEvent()
             end
         end
     end
-    self.eventListener:registerScriptHandler(onTouchBegan, cc.Handler.EVENT_TOUCH_BEGAN)
-    self.eventListener:registerScriptHandler(onTouchEnded, cc.Handler.EVENT_TOUCH_ENDED)
+    touchEventListener:registerScriptHandler(onTouchBegan, cc.Handler.EVENT_TOUCH_BEGAN)
+    touchEventListener:registerScriptHandler(onTouchEnded, cc.Handler.EVENT_TOUCH_ENDED)
+
     local eventDispatcher = cc.Director:getInstance():getEventDispatcher()
-    eventDispatcher:addEventListenerWithSceneGraphPriority(self.eventListener, self)
+    eventDispatcher:addEventListenerWithSceneGraphPriority(touchEventListener, self)
+
+    local keyboardEventListener = cc.EventListenerKeyboard:create()
+
+    local function onKeyPressed(keyCode)
+        if keyCode == cc.KeyCode.KEY_BACK then
+            self:backToMenu()
+        end
+    end
+
+    keyboardEventListener:registerScriptHandler(onKeyPressed, cc.Handler.EVENT_KEYBOARD_PRESSED)
+    eventDispatcher:addEventListenerWithSceneGraphPriority(keyboardEventListener, self)
+
 end
 
 function GameLayer:trySwap(p1, p2)

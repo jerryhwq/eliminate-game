@@ -4,7 +4,6 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion PROP_COMPILE_SDK_VERSION.toInteger()
-    buildToolsVersion "25.0.0"
 
     defaultConfig {
         applicationId "cn.huwenqiang.eliminate"
@@ -19,22 +18,21 @@ android {
                     // skip the NDK Build step if PROP_NDK_MODE is none
                     targets 'cocos2dlua'
                     arguments 'NDK_TOOLCHAIN_VERSION=4.9'
-                    arguments 'APP_PLATFORM=android-'+PROP_APP_PLATFORM
+                    arguments 'APP_PLATFORM=android-' + PROP_APP_PLATFORM
 
                     def module_paths = [project.file("../../../cocos2d-x").absolutePath,
                                         project.file("../../../cocos2d-x/cocos").absolutePath,
                                         project.file("../../../cocos2d-x/external").absolutePath]
                     if (Os.isFamily(Os.FAMILY_WINDOWS)) {
                         // should use '/'
-                        module_paths = module_paths.collect {it.replaceAll('\\\\', '/')}
+                        module_paths = module_paths.collect { it.replaceAll('\\\\', '/') }
                         arguments 'NDK_MODULE_PATH=' + module_paths.join(";")
-                    }
-                    else {
+                    } else {
                         arguments 'NDK_MODULE_PATH=' + module_paths.join(':')
                     }
 
                     arguments '-j' + Runtime.runtime.availableProcessors()
-                    abiFilters.addAll(PROP_APP_ABI.split(':').collect{it as String})
+                    abiFilters.addAll(PROP_APP_ABI.split(':').collect { it as String })
                 }
             }
         }
@@ -58,7 +56,7 @@ android {
 
     signingConfigs {
 
-       release {
+        release {
             if (project.hasProperty("RELEASE_STORE_FILE")) {
                 storeFile file(RELEASE_STORE_FILE)
                 storePassword RELEASE_STORE_PASSWORD
@@ -96,8 +94,7 @@ android {
 def getCocosCommandPath() {
     if (Os.isFamily(Os.FAMILY_WINDOWS)) {
         return 'cocos.bat'
-    }
-    else {
+    } else {
         // on unix like system, can not get environments variables easily
         // so run a shell script to get environment variable sets by cocos2d-x setup.py
         new ByteArrayOutputStream().withStream { os ->
@@ -116,8 +113,7 @@ def compileLua(srcDir, dstDir, doCompile, is64bit, doEncrypt) {
     def compileArgs = ['luacompile', '-s', srcDir, '-d', dstDir]
     if (!doCompile) {
         compileArgs << '--disable-compile'
-    }
-    else if (is64bit) {
+    } else if (is64bit) {
         compileArgs << '--bytecode-64bit'
     }
 
@@ -149,8 +145,8 @@ android.applicationVariants.all { variant ->
 
     variant.mergeAssets.doLast {
         copy {
-           from "${buildDir}/../../../../../res"
-           into "${buildDir}/intermediates/assets/${variant.dirName}/res"
+            from "${buildDir}/../../../../../res"
+            into "${buildDir}/intermediates/assets/${variant.dirName}/res"
         }
 
         copy {
@@ -179,24 +175,20 @@ android.applicationVariants.all { variant ->
             if (compileScript) {
                 def need64 = false
                 def need32 = false
-                def abis = PROP_APP_ABI.split(':').collect{it as String}
-                abis.each{ abi->
+                def abis = PROP_APP_ABI.split(':').collect { it as String }
+                abis.each { abi ->
                     if (abi.compareTo('arm64-v8a') == 0) {
                         need64 = true
-                    }
-                    else
-                    {
+                    } else {
                         need32 = true
                     }
                 }
 
                 if (need64 && need32) {
                     buildType = 2
-                }
-                else if (need64) {
+                } else if (need64) {
                     buildType = 1
-                }
-                else {
+                } else {
                     buildType = 0
                 }
             }
@@ -205,18 +197,18 @@ android.applicationVariants.all { variant ->
             switch (buildType) {
                 case -1:
                     compileLua("${buildDir}/intermediates/assets/${variant.dirName}/src",
-                               "${buildDir}/intermediates/assets/${variant.dirName}/src",
-                               false, false, encryptLua)
+                            "${buildDir}/intermediates/assets/${variant.dirName}/src",
+                            false, false, encryptLua)
                     break
                 case 0:
                     compileLua("${buildDir}/intermediates/assets/${variant.dirName}/src",
-                               "${buildDir}/intermediates/assets/${variant.dirName}/src",
-                               true, false, encryptLua)
+                            "${buildDir}/intermediates/assets/${variant.dirName}/src",
+                            true, false, encryptLua)
                     break
                 case 1:
                     compileLua("${buildDir}/intermediates/assets/${variant.dirName}/src",
-                               "${buildDir}/intermediates/assets/${variant.dirName}/src/64bit",
-                               true, true, encryptLua)
+                            "${buildDir}/intermediates/assets/${variant.dirName}/src/64bit",
+                            true, true, encryptLua)
 
                     // remove the lua files in src dir
                     delete fileTree("${buildDir}/intermediates/assets/${variant.dirName}/src") {
@@ -226,11 +218,11 @@ android.applicationVariants.all { variant ->
                     break
                 case 2:
                     compileLua("${buildDir}/intermediates/assets/${variant.dirName}/src",
-                               "${buildDir}/intermediates/assets/${variant.dirName}/src/64bit",
-                               true, true, encryptLua)
+                            "${buildDir}/intermediates/assets/${variant.dirName}/src/64bit",
+                            true, true, encryptLua)
                     compileLua("${buildDir}/intermediates/assets/${variant.dirName}/src",
-                               "${buildDir}/intermediates/assets/${variant.dirName}/src",
-                               true, false, encryptLua)
+                            "${buildDir}/intermediates/assets/${variant.dirName}/src",
+                            true, false, encryptLua)
                     break
             }
         }
@@ -238,6 +230,6 @@ android.applicationVariants.all { variant ->
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile project(':libcocos2dx')
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation project(':libcocos2dx')
 }

@@ -15,11 +15,7 @@ function MenuLayer:ctor()
 end
 
 function MenuLayer:initLayer()
-    local menu = cc.Menu:create()
-    menu:alignItemsVertically()
-    self:addChild(menu)
-
-    -- 添加开始游戏按钮
+    -- 开始游戏按钮
     local startMenuItem = cc.MenuItemFont:create('开始游戏')
     startMenuItem:setFontSizeObj(64)
     local function startMenuItemHandler(sender)
@@ -28,18 +24,25 @@ function MenuLayer:initLayer()
         cc.Director:getInstance():replaceScene(gameScene)
     end
     startMenuItem:registerScriptTapHandler(startMenuItemHandler)
+
+    -- 退出游戏按钮
+    local targetPlatform = cc.Application:getInstance():getTargetPlatform()
+    local quitMenuItem = cc.MenuItemFont:create('退出游戏')
+    local function quitMenuItemHandler()
+        cc.Director:getInstance():endToLua()
+    end
+    quitMenuItem:registerScriptTapHandler(quitMenuItemHandler)
+
+    local menu = cc.Menu:create()
     menu:addChild(startMenuItem)
 
     -- 如果不为iOS平台则添加退出游戏按钮
-    local targetPlatform = cc.Application:getInstance():getTargetPlatform()
     if (cc.PLATFORM_OS_IPHONE ~= targetPlatform) and (cc.PLATFORM_OS_IPAD ~= targetPlatform) then
-        local quitMenuItem = cc.MenuItemFont:create('退出游戏')
-        local function quitMenuItemHandler()
-            cc.Director:getInstance():endToLua()
-        end
-        quitMenuItem:registerScriptTapHandler(quitMenuItemHandler)
         menu:addChild(quitMenuItem)
     end
+    menu:alignItemsVertically()
+    self:addChild(menu)
+
 end
 
 function MenuLayer:onEnter()

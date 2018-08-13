@@ -5,6 +5,8 @@ local WIN_WIDTH = cc.Director:getInstance():getWinSize().width
 local WIN_HEIGHT = cc.Director:getInstance():getWinSize().height
 local BLOCK_WIDTH = 64
 local BLOCK_HEIGHT = 68
+local MAX_BLOCK_ROW = 7
+local MAX_BLOCK_COLUMN = 7
 
 local GameLayer = class('GameLayer', function()
     return cc.Layer:create()
@@ -14,7 +16,7 @@ function GameLayer:ctor()
 
     self.selected = nil
     self.blocks = {}
-    for i = 1, 8 do
+    for i = 1, MAX_BLOCK_COLUMN do
         self.blocks[i] = {}
     end
     self.canPlay = false
@@ -67,8 +69,8 @@ function GameLayer:backToMenu()
 end
 
 function GameLayer:initBlocks()
-    for i = 1, 8, 1 do
-        for j = 1, 8, 1 do
+    for i = 1, MAX_BLOCK_COLUMN, 1 do
+        for j = 1, MAX_BLOCK_ROW, 1 do
             while true do
                 local block = self:createNewBlock(i, j)
                 self.blocks[i][j] = block
@@ -99,9 +101,9 @@ end
 -- 遮住游戏在游戏区域外的方块
 function GameLayer:initClippingNode()
     local clippingLayerNode = cc.Node:create()
-    local clippingLayer = cc.LayerColor:create(cc.c3b(0, 0, 0), BLOCK_WIDTH * 8, BLOCK_HEIGHT * 8)
+    local clippingLayer = cc.LayerColor:create(cc.c3b(0, 0, 0), BLOCK_WIDTH * MAX_BLOCK_COLUMN, BLOCK_HEIGHT * MAX_BLOCK_ROW)
     clippingLayerNode:setAnchorPoint(0, 0)
-    clippingLayerNode:setPosition(WIN_WIDTH / 2 - BLOCK_WIDTH * 4, WIN_HEIGHT / 2 - BLOCK_HEIGHT * 4)
+    clippingLayerNode:setPosition(WIN_WIDTH / 2 - BLOCK_WIDTH * MAX_BLOCK_COLUMN / 2, WIN_HEIGHT / 2 - BLOCK_HEIGHT * MAX_BLOCK_ROW / 2)
     clippingLayerNode:addChild(clippingLayer)
 
     self.clippingNode = cc.ClippingNode:create(clippingLayerNode)
@@ -111,9 +113,9 @@ end
 -- 游戏区域背景
 function GameLayer:initBackgroundNode()
     self.backgroundNode = cc.DrawNode:create()
-    self.backgroundNode:drawSolidRect(cc.p(0, 0), cc.p(BLOCK_WIDTH * 8, BLOCK_HEIGHT * 8), cc.c4b(0, 0, 0, 0.5))
+    self.backgroundNode:drawSolidRect(cc.p(0, 0), cc.p(BLOCK_WIDTH * MAX_BLOCK_COLUMN, BLOCK_HEIGHT * MAX_BLOCK_ROW), cc.c4b(0, 0, 0, 0.5))
     self.backgroundNode:setAnchorPoint(0, 0)
-    self.backgroundNode:setPosition(WIN_WIDTH / 2 - BLOCK_WIDTH * 4, WIN_HEIGHT / 2 - BLOCK_HEIGHT * 4)
+    self.backgroundNode:setPosition(WIN_WIDTH / 2 - BLOCK_WIDTH * MAX_BLOCK_COLUMN / 2, WIN_HEIGHT / 2 - BLOCK_HEIGHT * MAX_BLOCK_ROW / 2)
     self.clippingNode:addChild(self.backgroundNode)
 end
 
@@ -216,6 +218,16 @@ function GameLayer:trySwap(p1, p2)
             end)
             return
         end
+        if r1 then
+            for i = 1, #r1 do
+                self:removeOneBlock(r1[i])
+            end
+        end
+        if r2 then
+            for i = 1, #r2 do
+                self:removeOneBlock(r2[i])
+            end
+        end
         audio.playSound('clear.mp3')
         self:fallAllColumns()
     end
@@ -224,13 +236,13 @@ end
 
 -- 落下并添加新方块，同时负责清除
 function GameLayer:fallAllColumns()
-    for i = 1, 8, 1 do
+    for i = 1, MAX_BLOCK_COLUMN, 1 do
         self:fallOneColumn(i)
     end
     local canContinue = true
     local function clear()
-        for i = 1, 8 do
-            for j = 1, 8 do
+        for i = 1, MAX_BLOCK_COLUMN, 1 do
+            for j = 1, MAX_BLOCK_ROW, 1 do
                 local r = self:tryClearBlock(cc.p(i, j))
                 if r then
                     canContinue = false
@@ -250,13 +262,13 @@ end
 function GameLayer:fallOneColumn(i)
     local newSpriteNum = 0
     -- 遍历一列
-    for j = 1, 8, 1 do
+    for j = 1, MAX_BLOCK_ROW, 1 do
         local sprite = self.blocks[i][j]
         -- 如果不存在就从上方下落
         if not sprite then
             local time
             local k = j + 1
-            while k <= 8 do
+            while k <= MAX_BLOCK_ROW do
                 sprite = self.blocks[i][k]
                 -- 如果上方有可用方块，就从上方下落
                 if sprite then
@@ -267,11 +279,11 @@ function GameLayer:fallOneColumn(i)
                 k = k + 1
             end
             -- 如果上方没有可用方块，就加载新的
-            if k == 9 then
+            if k == MAX_BLOCK_ROW + 1 then
                 sprite = BlockSprite.createRandomBlock()
                 sprite:setPosition(self:getAbsoluteLocation(cc.p(i, newSpriteNum + 9)))
                 newSpriteNum = newSpriteNum + 1
-                time = newSpriteNum + 8 - j
+                time = newSpriteNum + MAX_BLOCK_ROW - j
                 self.clippingNode:addChild(sprite)
             end
             self.blocks[i][j] = sprite
@@ -287,11 +299,11 @@ function GameLayer:tryClearBlock(p)
     if not sprite then
         return false
     end
-    local result = false
+    local result
     local sameTypeUpBlock = p.y
     local sameTypeDownBlock = p.y
     -- 上下、左右
-    for i = p.y + 1, 8, 1 do
+    for i = p.y + 1, MAX_BLOCK_ROW, 1 do
         local tempSprite = self.blocks[p.x][i]
         if sprite:hasSameType(tempSprite) then
             sameTypeUpBlock = i
@@ -307,23 +319,14 @@ function GameLayer:tryClearBlock(p)
             break
         end
     end
-    local count = sameTypeUpBlock - sameTypeDownBlock
-    if count >= 2 then
-        for i = sameTypeDownBlock, p.y - 1 do
-            self:removeOneBlock(cc.p(p.x, i))
+    if sameTypeUpBlock - sameTypeDownBlock >= 2 then
+        result = {}
+        for i = sameTypeDownBlock, sameTypeUpBlock, 1 do
+            result[#result + 1] = cc.p(p.x, i)
         end
-        for i = p.y + 1, sameTypeUpBlock, 1 do
-            self:removeOneBlock(cc.p(p.x, i))
-        end
-        if count >= 3 then
-            self:replaceSpecialBlock(p, 'line')
-        else
-            self:removeOneBlock(p)
-        end
-        result = true
     end
     if result then
-        return true
+        return result
     end
     local sameTypeLeftBlock = p.x
     local sameTypeRightBlock = p.x
@@ -335,7 +338,7 @@ function GameLayer:tryClearBlock(p)
             break
         end
     end
-    for i = p.x + 1, 8, 1 do
+    for i = p.x + 1, MAX_BLOCK_COLUMN, 1 do
         local tempSprite = self.blocks[i][p.y]
         if sprite:hasSameType(tempSprite) then
             sameTypeRightBlock = i
@@ -343,28 +346,40 @@ function GameLayer:tryClearBlock(p)
             break
         end
     end
-    count = sameTypeRightBlock - sameTypeLeftBlock
-    if count >= 2 then
-        for i = sameTypeLeftBlock, p.x - 1, 1 do
-            self:removeOneBlock(cc.p(i, p.y))
+    if sameTypeRightBlock - sameTypeLeftBlock >= 2 then
+        result = {}
+        for i = sameTypeLeftBlock, sameTypeRightBlock, 1 do
+            result[#result + 1] = cc.p(i, p.y)
         end
-        for i = p.x + 1, sameTypeRightBlock, 1 do
-            self:removeOneBlock(cc.p(i, p.y))
-        end
-        if count >= 3 then
-            self:replaceSpecialBlock(p, 'column')
-        else
-            self:removeOneBlock(p)
-        end
-        result = true
     end
     return result
 end
 
 function GameLayer:removeOneBlock(p)
     local tempSprite = self.blocks[p.x][p.y]
+    if not tempSprite then
+        return
+    end
+    local state = tempSprite.state
     tempSprite:removeSelf()
     self.blocks[p.x][p.y] = nil
+    if state == 'line' then
+        self:removeOneLine(p.y)
+    elseif state == 'column' then
+        self:removeOneColumn(p.x)
+    end
+end
+
+function GameLayer:removeOneLine(y)
+    for i = 1, MAX_BLOCK_COLUMN, 1 do
+        self:removeOneBlock(cc.p(i, y))
+    end
+end
+
+function GameLayer:removeOneColumn(x)
+    for i = 1, MAX_BLOCK_ROW, 1 do
+        self:removeOneBlock(cc.p(x, i))
+    end
 end
 
 function GameLayer:replaceSpecialBlock(p, state)
